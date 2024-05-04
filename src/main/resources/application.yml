@@ -1,0 +1,17 @@
+spring:
+  application:
+    name: springsecurity
+  datasource:
+    url: jdbc:sqlserver://localhost;databaseName=BookStoreManage
+    username: sa
+    password: sa
+    driver-class-name: com.microsoft.sqlserver.jdbc.SQLServerDriver
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+      database: sqlserver
+      database-platform: org.hibernate.dialect.SQLServerDialect
