@@ -15,3 +15,5 @@ spring:
         format_sql: true
       database: sqlserver
       database-platform: org.hibernate.dialect.SQLServerDialect
+jwt:
+  signerKey: "tM8xSUP69ojqAepIFbj7YGYGmx8Gn5ZIphCinTjFOtCy4V0pfZpb9pEgjoXA9Jmk"

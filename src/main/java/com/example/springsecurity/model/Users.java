@@ -13,8 +13,8 @@ import lombok.experimental.FieldDefaults;
 @Table(name = "USERS")
 public class Users {
     @Id
-    @GeneratedValue
-    Integer id;
+    @GeneratedValue(strategy = GenerationType.UUID)
+    String id;
     @Column(name = "USERNAME")
     String username;
     @Column(name = "FULLNAME")

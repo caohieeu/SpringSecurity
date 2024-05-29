@@ -9,15 +9,15 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 
 @ControllerAdvice
 public class GlobalExceptionHandler {
-    @ExceptionHandler(value = Exception.class)
-    private ResponseEntity<ApiResponse> handlingRuntimeException(Exception exception) {
-        return ResponseEntity.badRequest().body(
-                ApiResponse.builder()
-                        .code(ErrorCode.UNCATEGORIZED_EXCEPTION.getCode())
-                        .message(ErrorCode.UNCATEGORIZED_EXCEPTION.getMessage())
-                        .build()
-        );
-    }
+//    @ExceptionHandler(value = Exception.class)
+//    private ResponseEntity<ApiResponse> handlingRuntimeException(Exception exception) {
+//        return ResponseEntity.badRequest().body(
+//                ApiResponse.builder()
+//                        .code(ErrorCode.UNCATEGORIZED_EXCEPTION.getCode())
+//                        .message(ErrorCode.UNCATEGORIZED_EXCEPTION.getMessage())
+//                        .build()
+//        );
+//    }
 
     @ExceptionHandler(value = AppException.class)
     private ResponseEntity<ApiResponse> handlingAppException(AppException exception) {
