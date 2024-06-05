@@ -3,8 +3,11 @@ package com.example.springsecurity.service;
 import com.example.springsecurity.dto.request.AuthenticateRequest;
 import com.example.springsecurity.dto.request.IntrospectRequest;
 import com.example.springsecurity.dto.request.RegisterRequest;
+import com.example.springsecurity.dto.response.ApiResponse;
 import com.example.springsecurity.dto.response.AuthenticateResponse;
 import com.example.springsecurity.dto.response.IntrospectResponse;
+import com.example.springsecurity.dto.response.UserResponse;
+import com.example.springsecurity.enums.Role;
 import com.example.springsecurity.exception.AppException;
 import com.example.springsecurity.exception.ErrorCode;
 import com.example.springsecurity.mapper.UserMapper;
@@ -25,11 +28,15 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.util.CollectionUtils;
 
 import java.text.ParseException;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.StringJoiner;
 
 @Service
 @RequiredArgsConstructor
@@ -37,18 +44,24 @@ import java.util.Date;
 public class AuthenticationService {
     UsersRepository usersRepository;
     UserMapper userMapper;
+    PasswordEncoder passwordEncoder;
     @NonFinal
     @Value("${jwt.signerKey}")
     String SIGN_KEY;
-    public Users register(RegisterRequest request) {
+    public UserResponse register(RegisterRequest request) {
         var chkUser = usersRepository.findByUsername(request.getUsername())
                 .orElse(null);
         if(chkUser == null) {
-            PasswordEncoder passwordEncoder = new BCryptPasswordEncoder(10);
-            request.setPassword(passwordEncoder.encode(request.getPassword()));
+            Users user = userMapper.toUser(request);
+            user.setPassword(passwordEncoder.encode(request.getPassword()));
 
-            return usersRepository.save(
-                    userMapper.toUser(request)
+            HashSet<String> roles = new HashSet<>();
+            roles.add(Role.USER.name());
+
+            user.setRoles(roles);
+
+            return userMapper.toUserResponse(
+                    usersRepository.save(user)
             );
         }
         throw new AppException(ErrorCode.USER_EXISTEED);
@@ -57,51 +70,63 @@ public class AuthenticationService {
     public AuthenticateResponse authenticate(AuthenticateRequest request) throws JOSEException {
         var user = usersRepository.findByUsername(request.getUsername())
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
-        PasswordEncoder passwordEncoder = new BCryptPasswordEncoder(10);
         boolean chkPassword = passwordEncoder.matches(request.getPassword(), user.getPassword());
 
-        String token = generateToken(request.getUsername());
+        if(chkPassword) {
+            String token = generateToken(user);
 
-        return AuthenticateResponse.builder()
-                .authenticated(chkPassword)
-                .token(token)
-                .build();
+            return AuthenticateResponse.builder()
+                    .authenticated(chkPassword)
+                    .token(token)
+                    .build();
+        }
+        else {
+            throw  new AppException(ErrorCode.UNAUTHENTICATED);
+        }
     }
 
-    private String generateToken(String username) throws JOSEException {
+    private String generateToken(Users user) throws JOSEException {
         JWSHeader header = new JWSHeader(JWSAlgorithm.HS512);
 
-        JWTClaimsSet jwtClaimsSet = new JWTClaimsSet.Builder()
-                .subject(username)
+        JWTClaimsSet claimsSet = new JWTClaimsSet.Builder()
+                .subject(user.getUsername())
                 .issuer("caohieeu.com")
                 .issueTime(new Date())
                 .expirationTime(new Date(
                         Instant.now().plus(1, ChronoUnit.HOURS).toEpochMilli()
                 ))
-                .claim("CustomClaim", "MyClaim")
+                .claim("scope", buildScope(user))
+                .claim("user_id", user.getId())
                 .build();
 
-        Payload payload = new Payload(jwtClaimsSet.toJSONObject());
+        Payload payload = new Payload(claimsSet.toJSONObject());
 
-        JWSObject jweObject = new JWSObject(header, payload);
+        JWSObject jwsObject = new JWSObject(header, payload);
+        jwsObject.sign(new MACSigner(SIGN_KEY.getBytes()));
 
-        jweObject.sign(new MACSigner(SIGN_KEY.getBytes()));
-        return jweObject.serialize();
+        return jwsObject.serialize();
     }
-
-    public IntrospectResponse introspectToken(IntrospectRequest request) throws JOSEException, ParseException {
-        String token = request.getToken();
-
+    private String buildScope(Users user) {
+        StringJoiner stringJoiner = new StringJoiner(" ");
+        if(!CollectionUtils.isEmpty(user.getRoles())) {
+            user.getRoles().forEach(stringJoiner::add);
+        }
+        return stringJoiner.toString();
+    }
+    public boolean checkToken(String token) throws JOSEException, ParseException {
         JWSVerifier verifier = new MACVerifier(SIGN_KEY.getBytes());
 
         SignedJWT signedJWT = SignedJWT.parse(token);
 
         Date expiryTime = signedJWT.getJWTClaimsSet().getExpirationTime();
 
-        boolean verified = signedJWT.verify(verifier) && expiryTime.after(new Date());
+        return signedJWT.verify(verifier) && expiryTime.after(new Date());
+    }
+    public IntrospectResponse introspectToken(IntrospectRequest request) throws JOSEException, ParseException {
+        String token = request.getToken();
 
         return IntrospectResponse.builder()
-                .valid(verified)
+                .valid(checkToken(token))
                 .build();
     }
 }

@@ -7,6 +7,8 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 
+import java.text.ParseException;
+
 @ControllerAdvice
 public class GlobalExceptionHandler {
 //    @ExceptionHandler(value = Exception.class)
@@ -41,6 +43,18 @@ public class GlobalExceptionHandler {
         } catch (IllegalArgumentException e) {
 
         }
+
+        return ResponseEntity.badRequest().body(
+                ApiResponse.builder()
+                        .code(errorCode.getCode())
+                        .message(errorCode.getMessage())
+                        .build()
+        );
+    }
+
+    @ExceptionHandler(value = ParseException.class)
+    private ResponseEntity<ApiResponse> handlingParseException(ParseException parseException) {
+        ErrorCode errorCode = ErrorCode.PARSE_ERROR;
 
         return ResponseEntity.badRequest().body(
                 ApiResponse.builder()

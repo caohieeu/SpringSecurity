@@ -4,6 +4,8 @@ import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
+import java.util.Set;
+
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
@@ -21,4 +23,5 @@ public class Users {
     String fullname;
     @Column(name = "PASSWORD")
     String password;
+    Set<String> roles;
 }

@@ -6,6 +6,7 @@ import com.example.springsecurity.dto.request.RegisterRequest;
 import com.example.springsecurity.dto.response.ApiResponse;
 import com.example.springsecurity.dto.response.AuthenticateResponse;
 import com.example.springsecurity.dto.response.IntrospectResponse;
+import com.example.springsecurity.dto.response.UserResponse;
 import com.example.springsecurity.model.Users;
 import com.example.springsecurity.service.AuthenticationService;
 import com.nimbusds.jose.JOSEException;
@@ -21,12 +22,12 @@ import java.text.ParseException;
 public class AuthenticationController {
     private final AuthenticationService authenticationService;
     @PostMapping("/register")
-    public ApiResponse<Users> register(
+    public ApiResponse<UserResponse> register(
             @RequestBody @Valid RegisterRequest user
     ) {
         var userRegister = authenticationService.register(user);
 
-        return ApiResponse.<Users>builder()
+        return ApiResponse.<UserResponse>builder()
                 .result(userRegister)
                 .build();
     }

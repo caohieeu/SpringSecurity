@@ -1,5 +1,6 @@
 package com.example.springsecurity.service;
 
+import com.example.springsecurity.dto.request.IntrospectRequest;
 import com.example.springsecurity.dto.request.UpdateUserRequest;
 import com.example.springsecurity.dto.response.UserResponse;
 import com.example.springsecurity.exception.AppException;
@@ -7,6 +8,8 @@ import com.example.springsecurity.exception.ErrorCode;
 import com.example.springsecurity.mapper.UserMapper;
 import com.example.springsecurity.model.Users;
 import com.example.springsecurity.repository.UsersRepository;
+import com.nimbusds.jose.JOSEException;
+import com.nimbusds.jwt.SignedJWT;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -16,6 +19,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.text.ParseException;
 import java.util.List;
 
 @Service
@@ -24,6 +28,8 @@ import java.util.List;
 public class UsersService {
     UsersRepository usersRepository;
     UserMapper userMapper;
+    PasswordEncoder passwordEncoder;
+    AuthenticationService authenticationService;
     public List<Users> getListUser() {
         return usersRepository.findAll();
     }
@@ -34,8 +40,7 @@ public class UsersService {
     public UserResponse updateUser(String userId, UpdateUserRequest request) {
         Users user = getUser(userId);
 
-        PasswordEncoder passwordEncoder = new BCryptPasswordEncoder(10);
-        request.setPassword(passwordEncoder.encode(request.getPassword()));
+        user.setPassword(passwordEncoder.encode(request.getPassword()));
 
         userMapper.updateUser(user, request);
 
@@ -50,5 +55,17 @@ public class UsersService {
 
         usersRepository.delete(user);
         return userMapper.toUserResponse(user);
+    }
+
+    public UserResponse getInfoUser(String token) throws ParseException, JOSEException {
+
+        if(!authenticationService.checkToken(token)) {
+            throw new AppException(ErrorCode.TOKEN_INVALID);
+        }
+        SignedJWT signedJWT = SignedJWT.parse(token);
+        String userId = signedJWT.getJWTClaimsSet().getStringClaim("user_id");
+        return userMapper.toUserResponse(
+                getUser(userId)
+        );
     }
 }
